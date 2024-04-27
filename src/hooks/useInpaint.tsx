@@ -65,7 +65,7 @@ export function useInpaint({
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer sk-G3cuxCQqvOejkxMjt7Aaq51Ub6sJmuBpITP1hHcdTICF8YGk`, // Ensure this is your correct API Key
+            Authorization: `Bearer secret`, // Ensure this is your correct API Key
             Accept: "image/*",
           },
           body: formData,
