@@ -1,10 +1,14 @@
 import { useState } from "react";
 
-export function useInpaint({
-  onSuccess,
-}: {
-  onSuccess?: (image: string) => void;
-} = {}) {
+export function useInpaint(
+  {
+    onSuccess,
+    stabilityApiKey,
+  }: {
+    onSuccess?: (image: string) => void;
+    stabilityApiKey: string;
+  } = { stabilityApiKey: "" },
+) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<string | null>(null);
@@ -65,7 +69,7 @@ export function useInpaint({
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer secret`, // Ensure this is your correct API Key
+            Authorization: `Bearer ${stabilityApiKey}`, // Ensure this is your correct API Key
             Accept: "image/*",
           },
           body: formData,

@@ -1,5 +1,5 @@
 "use client";
-import { useInpaint } from "@/hooks/useInpaint";
+import { useInpaint } from "./hooks/useInpaint";
 import {
   ComponentType,
   MouseEventHandler,
@@ -10,18 +10,22 @@ import {
   useState,
 } from "react";
 import useUndo from "@djgould/react-use-undo/src";
+import "./index.css";
+import { Button } from "./Button";
 
-export default function AIEdit() {
-  return (
-    <>
-      <h1>AI Edit</h1>
-      <ImageDrawer src="/1.png" />
-    </>
-  );
+export default function AIEdit({
+  src,
+  stabilityApiKey,
+}: {
+  src: string;
+  stabilityApiKey: string;
+}) {
+  return <ImageDrawer src={src} stabilityApiKey={stabilityApiKey} />;
 }
 
 interface ImageDrawerProps {
   src: string;
+  stabilityApiKey: string;
 }
 
 type DrawCommand =
@@ -44,7 +48,8 @@ type DrawCommand =
 
 type Command =
   | { type: "draw"; steps: DrawCommand[] }
-  | { type: "inpaint"; data: string };
+  | { type: "inpaint"; data: string }
+  | { type: "clear" };
 
 const LINE_SIZE = 20;
 
@@ -60,16 +65,16 @@ function findLastInpaint(commands: Command[]) {
   return commands.findLast(isInpaint);
 }
 
-function ImageDrawer({ src }: ImageDrawerProps) {
+function ImageDrawer({ src, stabilityApiKey }: ImageDrawerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const { commands, addCommand, undo } = useUndo<Command>([]);
+  const { commands, addCommand, undo, redo } = useUndo<Command>([]);
 
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [brushSize, setBrushSize] = useState(LINE_SIZE);
-  const [brushType, setBruchType] = useState<BrushType>("brush");
-  const [prompt, setPrompt] = useState<string>("nile river");
+  const [brushType, setBrushType] = useState<BrushType>("brush");
+  const [prompt, setPrompt] = useState<string>("");
   const inpaintMutation = useInpaint({
+    stabilityApiKey,
     onSuccess: (data) => {
       addCommand({
         type: "inpaint",
@@ -97,7 +102,7 @@ function ImageDrawer({ src }: ImageDrawerProps) {
       return true; // Canvas was resized
     }
     return false; // No resize necessary
-  }, [canvasRef]);
+  }, [canvasRef, image]);
 
   useEffect(() => {
     resizeCanvas();
@@ -111,9 +116,9 @@ function ImageDrawer({ src }: ImageDrawerProps) {
     if (!context) return;
 
     const image = new Image();
-    setImage(image);
     image.onload = () => {
       context.clearRect(0, 0, canvas.width, canvas.height);
+      setImage(image);
     };
 
     image.src = src;
@@ -133,8 +138,6 @@ function ImageDrawer({ src }: ImageDrawerProps) {
         },
       ],
     });
-    setIsDrawing(true);
-    console.log("startDrawing");
   };
 
   const draw: MouseEventHandler = (e) => {
@@ -238,6 +241,9 @@ function ImageDrawer({ src }: ImageDrawerProps) {
               }
             }
             break;
+          case "clear":
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            break;
           case "inpaint":
             break;
         }
@@ -263,6 +269,98 @@ function ImageDrawer({ src }: ImageDrawerProps) {
 
   return (
     <div>
+      <div className="flex">
+        <Button
+          onClick={() => setBrushType("brush")}
+          selected={brushType === "brush"}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+            className="w-6 h-6"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42"
+            />
+          </svg>
+        </Button>
+        <Button
+          onClick={() => setBrushType("eraser")}
+          selected={brushType === "eraser"}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512">
+            <path d="M290.7 57.4L57.4 290.7c-25 25-25 65.5 0 90.5l80 80c12 12 28.3 18.7 45.3 18.7H288h9.4H512c17.7 0 32-14.3 32-32s-14.3-32-32-32H387.9L518.6 285.3c25-25 25-65.5 0-90.5L381.3 57.4c-25-25-65.5-25-90.5 0zM297.4 416H288l-105.4 0-80-80L227.3 211.3 364.7 348.7 297.4 416z" />
+          </svg>
+        </Button>
+        <Button onClick={undo}>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+            className="w-6 h-6"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"
+            />
+          </svg>
+        </Button>
+        <Button onClick={redo}>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+            className="w-6 h-6"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3"
+            />
+          </svg>
+        </Button>
+
+        <div>
+          <input
+            type="range"
+            name="brushSize"
+            min="1"
+            max="100"
+            onChange={(e) => setBrushSize(Number(e.target.value))}
+            value={brushSize}
+          />
+          <label htmlFor="brushSize">Brush Size ({brushSize})</label>
+        </div>
+        <input
+          type="text"
+          placeholder="Enter prompt"
+          className="border-black border"
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+        />
+        <Button
+          onClick={() => {
+            canvasRef.current &&
+              inpaintMutation.inpaint(imageSrc, canvasRef.current, prompt);
+            const canvas = canvasRef?.current;
+            const context = canvas?.getContext("2d");
+            if (!canvas || !context) return;
+            addCommand({ type: "clear" });
+          }}
+        >
+          Inpaint
+        </Button>
+      </div>
       <div className="relative w-full">
         <canvas
           className="bg-transparent absolute top-0 left-0 right-0 bottom-0 w-full h-full"
@@ -277,46 +375,6 @@ function ImageDrawer({ src }: ImageDrawerProps) {
           }}
         />
         <img src={imageSrc} alt="your image" className="w-full" />
-      </div>
-
-      <button onClick={undo}>Undo</button>
-      <div>
-        <input
-          type="range"
-          name="brushSize"
-          min="1"
-          max="100"
-          onChange={(e) => setBrushSize(e.target.value)}
-          value={brushSize}
-        />
-        <label htmlFor="brushSize">Brush Size ({brushSize})</label>
-      </div>
-      <div>
-        <select
-          value={brushType}
-          onChange={(e) => setBruchType(e.target.value as BrushType)}
-        >
-          <option value="brush">Brush</option>
-          <option value="eraser">Eraser</option>
-        </select>
-        <label htmlFor="brushType">Brush Type</label>
-        <input
-          type="text"
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-        />
-        <button
-          onClick={() => {
-            canvasRef.current &&
-              inpaintMutation.inpaint(imageSrc, canvasRef.current, prompt);
-            const canvas = canvasRef?.current;
-            const context = canvas?.getContext("2d");
-            if (!canvas || !context) return;
-            context?.clearRect(0, 0, canvas?.width, canvas?.height);
-          }}
-        >
-          Update
-        </button>
       </div>
     </div>
   );
