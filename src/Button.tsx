@@ -14,7 +14,7 @@ export function Button({
   ...restProps
 }: ButtonProps) {
   const classes = classNames(
-    "w-12 h-12 bg-gray-100 rounded p-4",
+    "w-12 h-12 bg-gray-100 rounded p-4 flex justify-center items-center",
     selected && "bg-blue-100",
     className,
   );
